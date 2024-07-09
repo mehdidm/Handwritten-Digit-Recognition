@@ -21,11 +21,20 @@ model = tf.keras.models.Sequential([
 # Compile the model
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
+# Create a single-threaded data loader (no need for prefetching in single-threaded mode)
+train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+train_dataset = train_dataset.shuffle(buffer_size=1024).batch(128)
+
+test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+test_dataset = test_dataset.batch(128)
+
 # Record the start time
 start_time = time.time()
 
 # Train the model
-model.fit(x_train, y_train, epochs=5, batch_size=128, validation_data=(x_test, y_test))
+model.fit(train_dataset, epochs=5, validation_data=test_dataset)
+
+tf.saved_model.save(model, 'handwritten_digit_model')
 
 # Record the end time
 end_time = time.time()
@@ -34,6 +43,6 @@ end_time = time.time()
 duration = end_time - start_time
 
 # Evaluate the model
-test_loss, test_acc = model.evaluate(x_test, y_test)
+test_loss, test_acc = model.evaluate(test_dataset)
 print(f'Test accuracy: {test_acc}')
 print(f'Training duration: {duration:.2f} seconds')
