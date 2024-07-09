@@ -31,15 +31,21 @@ def augment_data(image, label):
     return image, label
 
 # Define a worker function for data preprocessing
-def preprocess_worker(input_queue, output_queue):
+def preprocess_worker(input_queue, output_queue, semaphore, start_time):
     while True:
         try:
+            semaphore.acquire()  # Acquire semaphore before processing
             idx = input_queue.get(block=False)
             augmented_image, label = augment_data(x_train[idx], y_train[idx])
             output_queue.put((augmented_image.numpy(), label))
             input_queue.task_done()
+            semaphore.release()  # Release semaphore after processing
         except queue.Empty:
             break
+
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Preprocessing time: {duration:.2f} seconds")
 
 # Create queues for input and output
 input_queue = queue.Queue()
@@ -49,11 +55,20 @@ output_queue = queue.Queue()
 for i in range(len(x_train)):
     input_queue.put(i)
 
-# Create and start worker threads
+# Semaphore to limit concurrent threads
 num_threads = 4
+semaphore = threading.Semaphore(num_threads)
+
+# Record the start time for the entire process
+overall_start_time = time.time()
+
+# Record the start time for preprocessing
+preprocessing_start_time = time.time()
+
+# Create and start worker threads for preprocessing
 threads = []
 for _ in range(num_threads):
-    t = threading.Thread(target=preprocess_worker, args=(input_queue, output_queue))
+    t = threading.Thread(target=preprocess_worker, args=(input_queue, output_queue, semaphore, preprocessing_start_time))
     t.start()
     threads.append(t)
 
@@ -75,19 +90,34 @@ while not output_queue.empty():
 x_train_augmented = np.array(x_train_augmented)
 y_train_augmented = np.array(y_train_augmented)
 
-# Record the start time
-start_time = time.time()
+# Record the start time for training
+training_start_time = time.time()
 
 # Train the model
 model.fit(x_train_augmented, y_train_augmented, epochs=5, batch_size=128, validation_data=(x_test, y_test))
 
-# Record the end time
-end_time = time.time()
+# Record the end time for training
+training_end_time = time.time()
 
-# Calculate the duration
-duration = end_time - start_time
+# Calculate the duration for training
+training_duration = training_end_time - training_start_time
 
 # Evaluate the model
+evaluation_start_time = time.time()
 test_loss, test_acc = model.evaluate(x_test, y_test)
+evaluation_end_time = time.time()
+
+# Calculate the duration for evaluation
+evaluation_duration = evaluation_end_time - evaluation_start_time
+
+# Record the end time for the entire process
+overall_end_time = time.time()
+
+# Calculate the overall execution duration
+overall_duration = overall_end_time - overall_start_time
+
+# Print results
 print(f'Test accuracy: {test_acc}')
-print(f'Training duration: {duration:.2f} seconds')
+print(f'Training duration: {training_duration:.2f} seconds')
+print(f'Evaluation duration: {evaluation_duration:.2f} seconds')
+print(f'Overall execution duration: {overall_duration:.2f} seconds')

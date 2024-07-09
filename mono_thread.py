@@ -36,13 +36,21 @@ model.fit(train_dataset, epochs=5, validation_data=test_dataset)
 
 tf.saved_model.save(model, 'handwritten_digit_model')
 
-# Record the end time
-end_time = time.time()
-
-# Calculate the duration
-duration = end_time - start_time
+# Record the end time after training
+end_time_train = time.time()
 
 # Evaluate the model
 test_loss, test_acc = model.evaluate(test_dataset)
+
+# Record the end time after evaluation
+end_time_eval = time.time()
+
+# Calculate the durations
+training_duration = end_time_train - start_time
+evaluation_duration = end_time_eval - end_time_train
+total_duration = end_time_eval - start_time
+
 print(f'Test accuracy: {test_acc}')
-print(f'Training duration: {duration:.2f} seconds')
+print(f'Training duration: {training_duration:.2f} seconds')
+print(f'Evaluation duration: {evaluation_duration:.2f} seconds')
+print(f'Total execution time: {total_duration:.2f} seconds')
