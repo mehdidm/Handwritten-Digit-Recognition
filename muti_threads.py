@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
+import os
+import joblib
 
 MAX_THREADS = 5
 MAX_MODELS = 2
@@ -64,6 +66,14 @@ class HandwritingRecognition:
                 print(f"  Accuracy = {accuracy:.4f}")
                 print(f"  Average Training time = {avg_training_time:.6f} seconds")
                 print(f"  Evaluation time = {evaluation_time:.6f} seconds")
+
+                # Save model
+                model_dir = 'saved_models'
+                if not os.path.exists(model_dir):
+                    os.makedirs(model_dir)
+                model_path = os.path.join(model_dir, f'model_{threading.current_thread().name}.joblib')
+                joblib.dump(model, model_path)
+                print(f"  Model saved to: {model_path}")
 
                 self.models_available.release()
                 self.pbar.update(1)

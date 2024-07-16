@@ -3,7 +3,8 @@ from PIL import Image, UnidentifiedImageError
 import os
 import joblib
 from sklearn.neighbors import KNeighborsClassifier
-
+import joblib
+import os
 def is_valid_image(file_path):
     try:
         with Image.open(file_path) as img:

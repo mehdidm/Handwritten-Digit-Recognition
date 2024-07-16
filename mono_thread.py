@@ -54,7 +54,3 @@ print(f'Evaluation duration: {evaluation_duration:.2f} seconds')
 print(f'Total execution time: {total_time:.2f} seconds')
 
 
-# Save the trained model using TensorFlow's SavedModel format
-saved_model_path = './saved_model/'
-tf.saved_model.save(model, saved_model_path)
-print(f'Model saved to: {saved_model_path}')
