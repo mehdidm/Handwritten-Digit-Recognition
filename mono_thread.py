@@ -1,56 +1,60 @@
-import tensorflow as tf
 import time
+import tensorflow as tf
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from tqdm import tqdm
+import numpy as np
 
-# Load the MNIST dataset
-mnist = tf.keras.datasets.mnist
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
+def load_mnist():
+    mnist = tf.keras.datasets.mnist
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train, x_test = x_train / 255.0, x_test / 255.0
+    return x_train, x_test, y_train, y_test
 
-# Preprocess the data
-x_train = x_train.reshape((-1, 28, 28, 1)) / 255.0
-x_test = x_test.reshape((-1, 28, 28, 1)) / 255.0
-y_train = tf.keras.utils.to_categorical(y_train, num_classes=10)
-y_test = tf.keras.utils.to_categorical(y_test, num_classes=10)
+def train_model(model, x_train, y_train):
+    start_time = time.time()
+    with tqdm(total=1, desc="Training", unit="batch") as pbar:
+        model.fit(x_train, y_train)
+        pbar.update(1)
+    end_time = time.time()
+    return end_time - start_time
 
-# Build the model
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28, 28, 1)),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dense(10, activation='softmax')
-])
+def evaluate_model(model, x_test, y_test):
+    start_time = time.time()
+    with tqdm(total=1, desc="Evaluating", unit="batch") as pbar:
+        y_pred = model.predict(x_test)
+        pbar.update(1)
+    end_time = time.time()
+    accuracy = accuracy_score(y_test, y_pred)
+    return accuracy, end_time - start_time
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+x_train, x_test, y_train, y_test = load_mnist()
 
-# Create a single-threaded data loader (no need for prefetching in single-threaded mode)
-train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-train_dataset = train_dataset.shuffle(buffer_size=1024).batch(128)
+x_train = x_train.reshape(len(x_train), -1)
+x_test = x_test.reshape(len(x_test), -1)
 
-test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
-test_dataset = test_dataset.batch(128)
+y_train = y_train.flatten()
+y_test = y_test.flatten()
 
-# Record the start time
+unique_classes = np.unique(y_train)
+if len(unique_classes) < 2:
+    raise ValueError(f"The dataset contains only {len(unique_classes)} class. It should contain at least 2 classes.")
+
+model = LogisticRegression(max_iter=200)
+
 start_time = time.time()
+training_duration = train_model(model, x_train, y_train)
+eval_accuracy, evaluation_duration = evaluate_model(model, x_test, y_test)
+total_time = time.time() - start_time
 
-# Train the model
-model.fit(train_dataset, epochs=5, validation_data=test_dataset)
-
-tf.saved_model.save(model, 'handwritten_digit_model')
-
-# Record the end time after training
-end_time_train = time.time()
-
-# Evaluate the model
-test_loss, test_acc = model.evaluate(test_dataset)
-
-# Record the end time after evaluation
-end_time_eval = time.time()
-
-# Calculate the durations
-training_duration = end_time_train - start_time
-evaluation_duration = end_time_eval - end_time_train
-total_duration = end_time_eval - start_time
-
-print(f'Test accuracy: {test_acc}')
+print(f'Training accuracy: {model.score(x_train, y_train):.4f}')
 print(f'Training duration: {training_duration:.2f} seconds')
+print(f'Evaluation accuracy: {eval_accuracy:.4f}')
 print(f'Evaluation duration: {evaluation_duration:.2f} seconds')
-print(f'Total execution time: {total_duration:.2f} seconds')
+print(f'Total execution time: {total_time:.2f} seconds')
+
+
+# Save the trained model using TensorFlow's SavedModel format
+saved_model_path = './saved_model/'
+tf.saved_model.save(model, saved_model_path)
+print(f'Model saved to: {saved_model_path}')
